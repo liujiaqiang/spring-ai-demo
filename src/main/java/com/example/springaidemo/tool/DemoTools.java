@@ -36,7 +36,7 @@ public class DemoTools {
             result = "查询「" + city + "」天气失败：" + e.getMessage()
                     + "。可提示用户换一个城市名，或稍后再试。";
         }
-        ToolTraceHolder.record("getWeather", Map.of("city", city), result);
+        ToolTraceHolder.record("getWeather", Map.of("city", city == null ? "" : city), result);
         return result;
     }
 
@@ -69,7 +69,8 @@ public class DemoTools {
         } catch (Exception e) {
             result = "表达式无法计算：" + e.getMessage();
         }
-        ToolTraceHolder.record("calculator", Map.of("expression", expression), result);
+        ToolTraceHolder.record("calculator",
+                Map.of("expression", expression == null ? "" : expression), result);
         return result;
     }
 

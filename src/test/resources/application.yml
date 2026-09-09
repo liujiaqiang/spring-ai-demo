@@ -1,0 +1,6 @@
+# 测试专用配置：上下文冒烟测试会装配 OpenAI starter，但测试不发起真实调用，
+# 给一个占位 Key 即可满足自动装配。
+spring:
+  ai:
+    openai:
+      api-key: test-dummy-key

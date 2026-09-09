@@ -37,6 +37,11 @@ public class WeatherService {
         this.http = RestClient.builder().requestFactory(factory).build();
     }
 
+    /** 测试专用构造器：允许注入自定义 {@link RestClient}（例如绑定 MockRestServiceServer）。 */
+    WeatherService(RestClient http) {
+        this.http = http;
+    }
+
     /** 查询某城市当前天气，返回一段中文描述。城市找不到时抛 {@link IllegalArgumentException}。 */
     public String currentWeather(String city) {
         Geo geo = geocode(city);
@@ -87,8 +92,8 @@ public class WeatherService {
                         c.humidity(), windDirection(c.windDirection()), c.windSpeed(), c.time());
     }
 
-    /** WMO 天气代码 → 中文。 */
-    private String describeWeather(int code) {
+    /** WMO 天气代码 → 中文。包级可见以便单元测试直接覆盖全部分支。 */
+    static String describeWeather(int code) {
         return switch (code) {
             case 0 -> "晴";
             case 1 -> "大部晴朗";
@@ -115,8 +120,8 @@ public class WeatherService {
         };
     }
 
-    /** 风向角度 → 八方位中文。 */
-    private String windDirection(double deg) {
+    /** 风向角度 → 八方位中文。包级可见以便单元测试直接覆盖。 */
+    static String windDirection(double deg) {
         String[] dirs = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
         int idx = (int) Math.round(((deg % 360) / 45.0)) % 8;
         return dirs[idx];
