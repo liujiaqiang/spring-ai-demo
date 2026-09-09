@@ -12,7 +12,7 @@ import java.time.Duration;
 import java.util.List;
 
 /**
- * 真实天气服务：基于 Open-Meteo（https://open-meteo.com/）。
+ * 真实天气服务：基于 Open-Meteo（<a href="https://open-meteo.com/">...</a>）。
  *
  * <p>优点：免费、无需 API Key、无需注册、支持中文城市名，适合 Demo。
  * 两步调用：
@@ -37,12 +37,16 @@ public class WeatherService {
         this.http = RestClient.builder().requestFactory(factory).build();
     }
 
-    /** 测试专用构造器：允许注入自定义 {@link RestClient}（例如绑定 MockRestServiceServer）。 */
+    /**
+     * 测试专用构造器：允许注入自定义 {@link RestClient}（例如绑定 MockRestServiceServer）。
+     */
     WeatherService(RestClient http) {
         this.http = http;
     }
 
-    /** 查询某城市当前天气，返回一段中文描述。城市找不到时抛 {@link IllegalArgumentException}。 */
+    /**
+     * 查询某城市当前天气，返回一段中文描述。城市找不到时抛 {@link IllegalArgumentException}。
+     */
     public String currentWeather(String city) {
         Geo geo = geocode(city);
 
@@ -62,7 +66,9 @@ public class WeatherService {
         return format(geo, resp.current());
     }
 
-    /** 城市名（支持中文）→ 经纬度。 */
+    /**
+     * 城市名（支持中文）→ 经纬度。
+     */
     private Geo geocode(String city) {
         // 用 UriComponentsBuilder 对中文参数做编码，避免 RestClient 把已编码的 % 再次编码。
         URI url = UriComponentsBuilder.fromUriString("https://geocoding-api.open-meteo.com/v1/search")
@@ -78,7 +84,7 @@ public class WeatherService {
         if (resp == null || resp.results() == null || resp.results().isEmpty()) {
             throw new IllegalArgumentException("未找到城市：" + city);
         }
-        var r = resp.results().get(0);
+        var r = resp.results().getFirst();
         return new Geo(r.name(), r.latitude(), r.longitude(),
                 r.country() == null ? "" : r.country(),
                 r.admin1() == null ? "" : r.admin1());
@@ -92,7 +98,9 @@ public class WeatherService {
                         c.humidity(), windDirection(c.windDirection()), c.windSpeed(), c.time());
     }
 
-    /** WMO 天气代码 → 中文。包级可见以便单元测试直接覆盖全部分支。 */
+    /**
+     * WMO 天气代码 → 中文。包级可见以便单元测试直接覆盖全部分支。
+     */
     static String describeWeather(int code) {
         return switch (code) {
             case 0 -> "晴";
@@ -120,7 +128,9 @@ public class WeatherService {
         };
     }
 
-    /** 风向角度 → 八方位中文。包级可见以便单元测试直接覆盖。 */
+    /**
+     * 风向角度 → 八方位中文。包级可见以便单元测试直接覆盖。
+     */
     static String windDirection(double deg) {
         String[] dirs = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
         int idx = (int) Math.round(((deg % 360) / 45.0)) % 8;
