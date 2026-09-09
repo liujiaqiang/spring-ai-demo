@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring AI Demo · 火山方舟</title>
+  <style>
+    :root {
+      --bg: #f1f5f9; --card: #ffffff; --line: #e5e7eb; --text: #0f172a; --muted: #64748b;
+      --brand: #4f46e5; --brand2: #2563eb; --user: linear-gradient(135deg,#4f46e5,#2563eb);
+      --ai-bg: #ffffff; --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #e0e7ff 0%, transparent 55%),
+                  radial-gradient(1000px 500px at -10% 0%, #dbeafe 0%, transparent 50%), var(--bg);
+      color: var(--text); min-height: 100vh;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 28px 16px 70px; }
+
+    header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .brand h1 { font-size: 22px; margin: 0; letter-spacing: .5px; }
+    .brand p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff; }
+
+    .tabs { display: flex; gap: 8px; background: #fff; padding: 6px; border-radius: 14px; box-shadow: 0 2px 10px rgba(15,23,42,.05); margin-bottom: 14px; }
+    .tab { flex: 1; padding: 11px 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14.5px; color: var(--muted); font-weight: 500; transition: all .15s; }
+    .tab.active { background: var(--user); color: #fff; box-shadow: 0 4px 12px rgba(79,70,229,.3); }
+
+    .panel { display: none; background: var(--card); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(15,23,42,.08); padding: 18px; }
+    .panel.active { display: block; }
+
+    .chat { height: 60vh; min-height: 380px; max-height: 640px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+    .msg { display: flex; gap: 10px; align-items: flex-end; }
+    .msg.user { flex-direction: row-reverse; }
+    .avatar { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex: 0 0 auto; background: #f1f5f9; }
+    .msg.user .avatar { background: #dbeafe; }
+    .bubble { max-width: 78%; padding: 11px 14px; border-radius: 16px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; font-size: 15px; position: relative; }
+    .msg.ai .bubble { background: var(--ai-bg); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+    .msg.user .bubble { background: var(--user); color: #fff; border-bottom-right-radius: 5px; }
+    .bubble.err { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .cursor { display: inline-block; width: 8px; height: 16px; background: var(--brand); margin-left: 2px; vertical-align: -2px; animation: blink 1s steps(2) infinite; border-radius: 1px; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .dots span { display: inline-block; width: 6px; height: 6px; margin-right: 3px; background: #94a3b8; border-radius: 50%; animation: bounce 1.2s infinite; }
+    .dots span:nth-child(2){ animation-delay: .15s } .dots span:nth-child(3){ animation-delay: .3s }
+    @keyframes bounce { 0%,60%,100%{ transform: translateY(0); opacity:.5 } 30%{ transform: translateY(-4px); opacity:1 } }
+
+    .bar { display: flex; gap: 8px; margin-top: 14px; }
+    .bar input { flex: 1; padding: 13px 15px; font-size: 15px; border: 1px solid var(--line); border-radius: 12px; outline: none; transition: border .15s; background: #f8fafc; }
+    .bar input:focus { border-color: var(--brand); background: #fff; }
+    button.btn { padding: 12px 18px; font-size: 15px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all .15s; }
+    button.primary { background: var(--user); color: #fff; }
+    button.primary:disabled { opacity: .55; cursor: not-allowed; }
+    button.ghost { background: #f1f5f9; color: var(--muted); font-weight: 500; }
+    button.ghost:hover { background: #e2e8f0; }
+    button.stop { background: #fee2e2; color: #dc2626; }
+    .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+
+    .actor-card { margin-top: 16px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .actor-head { display: flex; align-items: center; gap: 12px; padding: 16px; background: linear-gradient(135deg,#eef2ff,#f0f9ff); }
+    .actor-head .big { width: 46px; height: 46px; border-radius: 12px; background: var(--user); color: #fff; display: grid; place-items: center; font-size: 24px; }
+    .actor-head h3 { margin: 0; font-size: 18px; }
+    .actor-head span { color: var(--muted); font-size: 13px; }
+    .films { list-style: none; margin: 0; padding: 6px 0; }
+    .films li { display: flex; gap: 12px; padding: 12px 18px; border-bottom: 1px dashed #eef2f7; align-items: center; }
+    .films li:last-child { border-bottom: 0; }
+    .films .no { width: 24px; height: 24px; flex: 0 0 auto; border-radius: 7px; background: #eef2ff; color: #4338ca; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 13px; user-select: none; }
+    pre { background: #0f172a; color: #7dd3fc; padding: 14px; border-radius: 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.6; margin-top: 10px; }
+    .empty { color: #94a3b8; text-align: center; margin-top: 60px; font-size: 14px; }
+    .empty .em { font-size: 40px; display: block; margin-bottom: 10px; }
+
+    /* 工具调用 */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+    .chip { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; cursor: pointer; transition: all .15s; }
+    .chip:hover { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+    .tool-flow { margin-top: 14px; }
+    .step { display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; margin-bottom: 8px; font-size: 14px; line-height: 1.6; }
+    .step.user { background: #eff6ff; }
+    .step.call { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .step.final { background: #faf5ff; border: 1px solid #e9d5ff; }
+    .step .ico { font-size: 17px; flex: 0 0 auto; }
+    .step .k { color: #64748b; font-size: 12.5px; display: block; margin-bottom: 2px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tool-name { color: #15803d; font-weight: 700; }
+    .tool-args { color: #334155; }
+    .tool-ret { color: #166534; }
+    .badge-ok { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px; background: #dcfce7; color: #166534; margin-left: 8px; }
+    .badge-none { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px; background: #f1f5f9; color: #64748b; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <h1>🌱 Spring AI 智能助手</h1>
+        <p>多轮对话 · 流式输出 · 结构化输出</p>
+      </div>
+      <div class="badges">
+        <span class="badge">JDK 25</span>
+        <span class="badge">Spring Boot 4.1</span>
+        <span class="badge">Spring AI 2.0</span>
+        <span class="badge" id="modelBadge">glm-5.3</span>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="stream">🌊 流式对话</button>
+      <button class="tab" data-tab="chat">💬 普通对话</button>
+      <button class="tab" data-tab="actor">🎬 结构化输出</button>
+      <button class="tab" data-tab="tool">🛠 工具调用</button>
+    </div>
+
+    <!-- 流式对话 -->
+    <section class="panel active" id="panel-stream">
+      <div class="chat" id="streamChat">
+        <div class="empty" id="streamEmpty"><span class="em">💬</span>发一条消息开始，回答会逐字“流”出来</div>
+      </div>
+      <div class="bar">
+        <input type="text" id="streamInput" placeholder="输入消息，回车发送…" />
+        <button class="btn primary" id="streamSend">发送</button>
+        <button class="btn stop" id="streamStop" style="display:none">停止</button>
+        <button class="btn ghost" id="streamNew">新会话</button>
+      </div>
+      <div class="hint">EventSource 接收 SSE，逐字输出；同一会话内保留多轮记忆。</div>
+    </section>
+
+    <!-- 普通对话 -->
+    <section class="panel" id="panel-chat">
+      <div class="chat" id="chatChat">
+        <div class="empty" id="chatEmpty"><span class="em">🧠</span>一次性返回完整结果。试试：先发「我叫小明」，再问「我叫什么名字？」</div>
+      </div>
+      <div class="bar">
+        <input type="text" id="chatInput" placeholder="输入消息，回车发送…" />
+        <button class="btn primary" id="chatSend">发送</button>
+        <button class="btn ghost" id="chatNew">新会话</button>
+      </div>
+      <div class="hint">普通 /chat 接口，非流式；同样带会话记忆。</div>
+    </section>
+
+    <!-- 结构化输出 -->
+    <section class="panel" id="panel-actor">
+      <div class="bar">
+        <input type="text" id="actorInput" value="周星驰" placeholder="输入演员名，如：周星驰" />
+        <button class="btn primary" id="actorSend">查询电影</button>
+      </div>
+      <div id="actorResult"></div>
+      <div class="hint">模型返回 JSON，Spring AI 自动映射为 <code>ActorFilms(actor, films[])</code>。</div>
+    </section>
+
+    <!-- 工具调用（Function Calling） -->
+    <section class="panel" id="panel-tool">
+      <div class="bar">
+        <input type="text" id="toolInput" value="北京天气怎么样？再帮我算一下 (12+8)*3" placeholder="问天气 / 时间 / 数学计算…" />
+        <button class="btn primary" id="toolSend">发送</button>
+      </div>
+      <div class="chips" id="toolChips"></div>
+      <div id="toolResult"></div>
+      <div class="hint">模型会<strong>自主决定</strong>调用本地 Java 工具（<code>getWeather</code> / <code>getCurrentTime</code> / <code>calculator</code>），
+        框架执行后把结果交回模型生成最终答案；下方会展示完整调用链。</div>
+    </section>
+  </div>
+
+  <script>
+    // ---------- Tab 切换 ----------
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    }));
+
+    const qs = id => document.getElementById(id);
+    const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // 会话 id（聊天类接口各自独立）
+    const session = { stream: 'web-s-' + Date.now(), chat: 'web-c-' + Date.now() };
+
+    // 滚动到底（若用户本来就在底部附近）
+    function scrollBottom(box) { box.scrollTop = box.scrollHeight; }
+
+    // 添加一条消息气泡，返回可更新内容的元素
+    function addMsg(box, role) {
+      const empty = box.querySelector('.empty'); if (empty) empty.remove();
+      const wrap = document.createElement('div'); wrap.className = 'msg ' + role;
+      const av = document.createElement('div'); av.className = 'avatar'; av.textContent = role === 'user' ? '🧑' : '🤖';
+      const bub = document.createElement('div'); bub.className = 'bubble';
+      wrap.appendChild(av); wrap.appendChild(bub); box.appendChild(wrap);
+      scrollBottom(box);
+      return bub;
+    }
+    const thinking = '<span class="dots"><span></span><span></span><span></span></span>';
+
+    // ---------- 1) 流式对话 ----------
+    let es = null;
+    function streamSend() {
+      const input = qs('streamInput'), message = input.value.trim();
+      if (!message || es) return;
+      addMsg(qs('streamChat'), 'user').textContent = message;
+      input.value = '';
+      const ai = addMsg(qs('streamChat'), 'ai');
+      ai.innerHTML = thinking;
+      qs('streamSend').disabled = true; qs('streamStop').style.display = '';
+
+      const url = '/chat/stream?message=' + encodeURIComponent(message) + '&conversationId=' + session.stream;
+      es = new EventSource(url);
+      let got = '';
+      es.onmessage = e => {
+        got += e.data;
+        ai.textContent = got;
+        const cur = document.createElement('span'); cur.className = 'cursor'; ai.appendChild(cur);
+        scrollBottom(qs('streamChat'));
+      };
+      const finish = (errMsg) => {
+        if (es) { es.close(); es = null; }
+        qs('streamSend').disabled = false; qs('streamStop').style.display = 'none';
+        if (errMsg) { ai.classList.add('err'); ai.textContent = errMsg; }
+        else if (!got) { ai.textContent = '（没有返回内容）'; }
+      };
+      es.onerror = () => finish();                       // 服务端正常结束流也会触发 onerror
+      qs('streamStop').onclick = () => finish('已停止生成');
+    }
+    qs('streamSend').onclick = streamSend;
+    qs('streamInput').addEventListener('keydown', e => { if (e.key === 'Enter') streamSend(); });
+    qs('streamNew').onclick = () => { session.stream = 'web-s-' + Date.now(); qs('streamChat').innerHTML = ''; };
+
+    // ---------- 2) 普通对话 ----------
+    let chatBusy = false;
+    async function chatSend() {
+      const input = qs('chatInput'), message = input.value.trim();
+      if (!message || chatBusy) return;
+      chatBusy = true;
+      addMsg(qs('chatChat'), 'user').textContent = message;
+      input.value = '';
+      const ai = addMsg(qs('chatChat'), 'ai'); ai.innerHTML = thinking;
+      qs('chatSend').disabled = true;
+      try {
+        const r = await fetch('/chat?message=' + encodeURIComponent(message) + '&conversationId=' + session.chat);
+        const text = await r.text();
+        if (r.ok) { ai.textContent = text; }
+        else { ai.classList.add('err'); ai.textContent = '请求失败（' + r.status + '）：' + text; }
+      } catch (err) { ai.classList.add('err'); ai.textContent = '请求出错：' + err; }
+      finally { chatBusy = false; qs('chatSend').disabled = false; scrollBottom(qs('chatChat')); }
+    }
+    qs('chatSend').onclick = chatSend;
+    qs('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') chatSend(); });
+    qs('chatNew').onclick = () => { session.chat = 'web-c-' + Date.now(); qs('chatChat').innerHTML = ''; };
+
+    // ---------- 3) 结构化输出 ----------
+    qs('actorSend').onclick = async () => {
+      const actor = qs('actorInput').value.trim(), box = qs('actorResult');
+      if (!actor) return;
+      box.innerHTML = '<div class="hint">正在查询 <b>' + esc(actor) + '</b> 的电影…</div>';
+      try {
+        const r = await fetch('/chat/actor?actor=' + encodeURIComponent(actor));
+        const data = await r.json();
+        if (!r.ok) { box.innerHTML = '<div class="bubble err">请求失败（' + r.status + '）：' + esc(data.error || '') + '</div>'; return; }
+        const name = data.actor || actor;
+        const films = (data.films || []).map((f, i) =>
+          '<li><span class="no">' + (i + 1) + '</span><span>' + esc(f) + '</span></li>').join('');
+        box.innerHTML =
+          '<div class="actor-card"><div class="actor-head"><div class="big">🎬</div>' +
+          '<div><h3>' + esc(name) + '</h3><span>共 ' + (data.films || []).length + ' 部代表作品</span></div></div>' +
+          '<ul class="films">' + films + '</ul></div>' +
+          '<details><summary>查看原始 JSON</summary><pre>' + esc(JSON.stringify(data, null, 2)) + '</pre></details>';
+      } catch (err) { box.innerHTML = '<div class="bubble err">请求出错：' + esc(String(err)) + '</div>'; }
+    };
+    qs('actorInput').addEventListener('keydown', e => { if (e.key === 'Enter') qs('actorSend').click(); });
+
+    // ---------- 4) 工具调用（Function Calling） ----------
+    const TOOL_ICON = { getWeather: '🌤️', getCurrentTime: '🕐', calculator: '🧮' };
+    const examples = ['北京天气怎么样？', '现在几点了？', '(12+8)*3 等于多少', '上海天气呢，顺便算 100/4'];
+    const chipBox = qs('toolChips');
+    examples.forEach(t => {
+      const c = document.createElement('span');
+      c.className = 'chip'; c.textContent = t;
+      c.onclick = () => { qs('toolInput').value = t; toolAsk(); };
+      chipBox.appendChild(c);
+    });
+
+    async function toolAsk() {
+      const input = qs('toolInput'), message = input.value.trim(), box = qs('toolResult');
+      if (!message) return;
+      box.innerHTML = '<div class="step user"><span class="ico">🧑</span><div><span class="k">你的问题</span>' + esc(message) +
+        '<div class="hint" style="margin-top:6px">模型思考中，可能会调用工具…</div></div></div>';
+      qs('toolSend').disabled = true;
+      try {
+        const r = await fetch('/tool/chat?message=' + encodeURIComponent(message));
+        const d = await r.json();
+        if (!r.ok) { box.innerHTML += '<div class="bubble err">请求失败（' + r.status + '）：' + esc(d.error || '') + '</div>'; return; }
+
+        const calls = d.toolCalls || [];
+        let flow = '<div class="tool-flow">';
+        flow += '<div class="step user"><span class="ico">🧑</span><div><span class="k">你的问题</span>' + esc(d.message || message) + '</div></div>';
+
+        if (calls.length) {
+          calls.forEach((c, i) => {
+            const icon = TOOL_ICON[c.tool] || '🔧';
+            flow += '<div class="step call"><span class="ico">' + icon + '</span><div>' +
+              '<span class="k">工具调用 #' + (i + 1) + '</span>' +
+              '<span class="tool-name mono">' + esc(c.tool) + '</span>' +
+              '<span class="mono tool-args">(' + esc(JSON.stringify(c.arguments)) + ')</span>' +
+              '<div style="margin-top:4px"><span class="k">工具返回</span><span class="tool-ret mono">' + esc(String(c.result)) + '</span></div>' +
+              '</div></div>';
+          });
+        }
+
+        flow += '<div class="step final"><span class="ico">🤖</span><div><span class="k">模型基于工具结果作答</span>' +
+          esc(d.answer || '') +
+          (calls.length ? '<span class="badge-ok">调用了 ' + calls.length + ' 个工具</span>' : '<span class="badge-none">未调用工具</span>') +
+          '</div></div>';
+        flow += '</div>';
+        box.innerHTML = flow;
+      } catch (err) {
+        box.innerHTML += '<div class="bubble err">请求出错：' + esc(String(err)) + '</div>';
+      } finally { qs('toolSend').disabled = false; }
+    }
+    qs('toolSend').onclick = toolAsk;
+    qs('toolInput').addEventListener('keydown', e => { if (e.key === 'Enter') toolAsk(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# 复制本文件为 application-local.yml，填入你自己的 Key 即可；application-local.yml 不会被提交。
+# 也可以不建文件，直接用环境变量：export OPENAI_API_KEY=sk-xxxx
+spring:
+  ai:
+    openai:
+      # 火山方舟 Agent Plan / Coding Plan / 平台 Key，或 OpenAI / DeepSeek 等 OpenAI 兼容 Key
+      api-key: your-api-key-here
+      # 如用其它厂商，连同 base-url / model 一起改（详见 README）
+      # base-url: https://api.deepseek.com/v1
+      # chat.options.model: deepseek-chat

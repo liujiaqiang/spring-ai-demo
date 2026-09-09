@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: spring-ai-demo
+  profiles:
+    # 默认启用 local（本机调试）。真实 Key 放在 application-local.yml（已加入 .gitignore，不会提交）。
+    # 克隆到其它机器：设置环境变量 OPENAI_API_KEY，或参考 application-local.yml.example。
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  ai:
+    openai:
+      # 公开仓库不放任何真实密钥：从环境变量读取，缺省为空。
+      # 本机调试用的真实值写在 application-local.yml（被 gitignore）。
+      api-key: ${OPENAI_API_KEY:}
+      # Spring AI 2.x 使用官方 OpenAI Java SDK：base-url 必须填「完整版本前缀」，
+      # SDK 会自动在末尾追加 /chat/completions。
+      #   最终请求 = base-url + /chat/completions
+      # 火山方舟各端点：
+      #   Agent Plan : https://ark.cn-beijing.volces.com/api/plan/v3
+      #   Coding Plan: https://ark.cn-beijing.volces.com/api/coding/v3
+      #   标准数据面 : https://ark.cn-beijing.volces.com/api/v3  （需平台 Key + 已开通模型/接入点 ep-xxx）
+      # OpenAI 官方: https://api.openai.com/v1 ；DeepSeek: https://api.deepseek.com/v1
+      base-url: ${OPENAI_BASE_URL:https://ark.cn-beijing.volces.com/api/plan/v3}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:glm-5.3}
+          temperature: 0.7
+
+logging:
+  level:
+    org.springframework.ai: info

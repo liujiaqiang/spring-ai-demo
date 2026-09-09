@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring AI Demo 代码讲解</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#fff; --ink:#1f2937; --muted:#6b7280; --line:#e7e9f0;
+    --brand:#4f46e5; --brand2:#2563eb; --green:#0f9d58; --amber:#d97706; --red:#dc2626;
+    --code-bg:#0f172a; --code-ink:#e2e8f0; --side-w:268px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.75;font-size:15.5px}
+  a{color:var(--brand2);text-decoration:none}
+  /* 侧边目录 */
+  nav{position:fixed;top:0;left:0;bottom:0;width:var(--side-w);overflow-y:auto;padding:26px 18px;
+    background:#0f172a;color:#cbd5e1}
+  nav .logo{font-size:17px;font-weight:700;color:#fff;margin-bottom:4px}
+  nav .sub{font-size:12px;color:#64748b;margin-bottom:20px}
+  nav a{display:block;color:#cbd5e1;padding:7px 12px;border-radius:8px;font-size:14px;margin-bottom:2px}
+  nav a:hover{background:#1e293b;color:#fff}
+  nav a .n{color:#64748b;margin-right:8px;font-variant-numeric:tabular-nums}
+  main{margin-left:var(--side-w);padding:40px 48px 90px;max-width:1080px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 32px;margin-bottom:22px;
+    box-shadow:0 2px 10px rgba(15,23,42,.04)}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:.5px}
+  h2{font-size:22px;margin:0 0 16px;padding-bottom:10px;border-bottom:2px solid #eef2ff;display:flex;align-items:center;gap:10px}
+  h2 .num{background:var(--user,linear-gradient(135deg,#4f46e5,#2563eb));color:#fff;width:30px;height:30px;border-radius:9px;
+    display:inline-grid;place-items:center;font-size:15px;flex:0 0 auto}
+  h3{font-size:17px;margin:24px 0 8px;color:#312e81}
+  p{margin:10px 0}
+  .lead{color:var(--muted);font-size:15px;margin-top:0}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+  .badge{font-size:12.5px;padding:4px 12px;border-radius:999px;background:#eef2ff;color:#4338ca;border:1px solid #e0e7ff;font-weight:600}
+  /* 代码块 */
+  pre{background:var(--code-bg);color:var(--code-ink);padding:16px 18px;border-radius:12px;overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.3px;line-height:1.7;margin:12px 0}
+  pre .c{color:#64748b;font-style:italic} /* 注释 */
+  pre .k{color:#c084fc}               /* 关键字 */
+  pre .s{color:#86efac}               /* 字符串 */
+  pre .a{color:#7dd3fc}               /* 注解 */
+  pre .f{color:#fcd34d}               /* 方法名 */
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#eef2ff;color:#4338ca;padding:1.5px 6px;border-radius:6px;font-size:13.5px}
+  pre code{background:none;color:inherit;padding:0}
+  .file{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:#f1f5f9;border:1px solid var(--line);
+    padding:2px 9px;border-radius:7px;color:#334155}
+  /* 架构图 */
+  .arch{display:flex;flex-direction:column;gap:0;margin:18px 0}
+  .box{border:2px solid #c7d2fe;background:#f8faff;border-radius:12px;padding:14px 18px;text-align:center;font-weight:600}
+  .box.dark{background:#0f172a;color:#fff;border-color:#0f172a}
+  .box.green{border-color:#86efac;background:#f0fdf4}
+  .box.amber{border-color:#fcd34d;background:#fffbeb}
+  .arrow{text-align:center;color:#94a3b8;font-size:20px;line-height:1;margin:2px 0}
+  .layers{display:grid;gap:10px;margin:14px 0}
+  .layer{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:#fcfcff}
+  .layer b{color:var(--brand)}
+  .layer small{color:var(--muted)}
+  /* 表格 */
+  table{width:border-collapse:collapse;margin:14px 0;font-size:14px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:#f5f7ff;font-weight:600}
+  tr:nth-child(even) td{background:#fafbff}
+  /* 步骤流 */
+  .flow{counter-reset:step;margin:16px 0}
+  .step{position:relative;padding:12px 16px 12px 52px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:#fcfcff}
+  .step::before{counter-increment:step;content:counter(step);position:absolute;left:14px;top:13px;width:26px;height:26px;
+    background:linear-gradient(135deg,#4f46e5,#2563eb);color:#fff;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700}
+  .step.user::before{content:"🧑";background:#dbeafe;font-size:15px}
+  .step.tool::before{content:"🔧";background:#dcfce7;font-size:15px}
+  .step.ai::before{content:"🤖";background:#f3e8ff;font-size:15px}
+  .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;font-weight:600}
+  .pill.g{background:#dcfce7;color:#166534}.pill.b{background:#dbeafe;color:#1e40af}.pill.r{background:#fee2e2;color:#991b1b}
+  .callout{border-left:4px solid var(--brand);background:#f5f7ff;padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;font-size:14.5px}
+  .callout.warn{border-color:var(--amber);background:#fffbeb}
+  .callout.tip{border-color:var(--green);background:#f0fdf4}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .mini{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fcfcff}
+  .mini h4{margin:0 0 6px;font-size:15px}
+  .mini p{margin:0;font-size:13.5px;color:var(--muted)}
+  .top{position:fixed;right:26px;bottom:26px;width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-size:20px;box-shadow:0 6px 18px rgba(79,70,229,.4);z-index:10}
+  @media(max-width:900px){nav{display:none}main{margin-left:0;padding:20px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">🌱 Spring AI Demo</div>
+  <div class="sub">代码全景讲解 · Boot 4.1 / AI 2.0 / JDK 25</div>
+  <a href="#s1"><span class="n">01</span>整体架构</a>
+  <a href="#s2"><span class="n">02</span>启动类</a>
+  <a href="#s3"><span class="n">03</span>ChatConfig 配置</a>
+  <a href="#s4"><span class="n">04</span>ChatController 三大接口</a>
+  <a href="#s5"><span class="n">05</span>结构化输出 DTO</a>
+  <a href="#s6"><span class="n">06</span>工具调用 DemoTools</a>
+  <a href="#s7"><span class="n">07</span>ToolTraceHolder</a>
+  <a href="#s8"><span class="n">08</span>ToolController</a>
+  <a href="#s9"><span class="n">09</span>真实天气服务</a>
+  <a href="#s10"><span class="n">10</span>application.yml</a>
+  <a href="#s11"><span class="n">11</span>工具调用完整时序</a>
+  <a href="#s12"><span class="n">12</span>核心知识点 & 坑</a>
+</nav>
+
+<main>
+  <h1>Spring AI Demo 代码讲解</h1>
+  <p class="lead">按照「<b>一个请求是怎么一层层流动的</b>」来读，8 个 Java 类，职责单一、非常清晰。</p>
+  <div class="badges">
+    <span class="badge">JDK 25</span>
+    <span class="badge">Spring Boot 4.1.1</span>
+    <span class="badge">Spring AI 2.0.1</span>
+    <span class="badge">火山方舟 glm-5.3</span>
+    <span class="badge">Function Calling</span>
+  </div>
+
+  <!-- 1 -->
+  <section id="s1">
+    <h2><span class="num">1</span>整体架构</h2>
+    <div class="arch">
+      <div class="box">浏览器 &nbsp;<code>static/index.html</code>&nbsp;（4 个标签页）</div>
+      <div class="arrow">▼ &nbsp;HTTP / SSE</div>
+      <div class="box">Controller 层<br><small>ChatController（对话/流式/结构化） · ToolController（工具）</small></div>
+      <div class="arrow">▼</div>
+      <div class="box" style="border-color:#a5b4fc;background:#eef2ff">
+        ChatClient（统一门面）<br>
+        <small>经过 Advisor 链：MessageChatMemoryAdvisor（记忆拦截器）</small>
+      </div>
+      <div class="arrow">▼ &nbsp;HTTPS（OpenAI 官方 SDK）</div>
+      <div class="box dark">火山方舟大模型 &nbsp;glm-5.3</div>
+    </div>
+    <p>旁边还有两个配角：<span class="pill g">@Tool 本地方法</span> 天气 / 时间 / 计算器，
+      以及 <span class="pill b">WeatherService</span> 调真实天气 API。模型回答不了的事（查实时天气、算数），就「反过来调用」它们。</p>
+
+    <div class="layers">
+      <div class="layer"><b>① Controller 层</b> <small>— 接收 HTTP 请求、返回 JSON/文本/流</small></div>
+      <div class="layer"><b>② ChatClient</b> <small>— Spring AI 的统一调用门面，拼装 提示词/记忆/工具</small></div>
+      <div class="layer"><b>③ Advisor</b> <small>— 套在模型调用外的拦截器（这里负责多轮记忆）</small></div>
+      <div class="layer"><b>④ OpenAI SDK</b> <small>— 真正发 HTTP 给火山方舟</small></div>
+      <div class="layer"><b>⑤ Tools</b> <small>— 模型可调用的本地 Java 能力</small></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <h2><span class="num">2</span>启动类 <span class="file">SpringAiDemoApplication.java</span></h2>
+    <p>最普通的 Spring Boot 入口，没有特殊逻辑：</p>
+<pre><span class="a">@SpringBootApplication</span>   <span class="c">// = 自动配置 + 组件扫描 + 配置类</span>
+<span class="k">public class</span> <span class="f">SpringAiDemoApplication</span> {
+    <span class="k">public static void</span> <span class="f">main</span>(String[] args) {
+        SpringApplication.<span class="f">run</span>(SpringAiDemoApplication.<span class="k">class</span>, args);
+    }
+}</pre>
+    <p>启动后自动扫描同包及子包下所有 <code>@Component / @RestController / @Configuration</code>。</p>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3">
+    <h2><span class="num">3</span>核心配置 <span class="file">config/ChatConfig.java</span></h2>
+    <p>这里装配了整个 Demo 的「大脑」——<code>ChatClient</code>，定义了两个 Bean。</p>
+
+    <h3>① 对话记忆 ChatMemory</h3>
+<pre><span class="a">@Bean</span>
+<span class="k">public</span> ChatMemory <span class="f">chatMemory</span>() {
+    <span class="k">return</span> MessageWindowChatMemory.<span class="f">builder</span>()
+            .<span class="f">maxMessages</span>(<span class="s">20</span>)   <span class="c">// 每个会话只保留最近 20 条（滑动窗口）</span>
+            .<span class="f">build</span>();
+}</pre>
+    <ul>
+      <li>底层默认是 <code>InMemoryChatMemoryRepository</code>，本质是 JVM 堆里的一个
+        <code>Map&lt;会话id, List&lt;消息&gt;&gt;</code>；</li>
+      <li><b>重启即清空</b>，多实例不共享；要持久化可换 <code>JdbcChatMemoryRepository</code> / Redis。</li>
+    </ul>
+
+    <h3>② ChatClient</h3>
+<pre><span class="a">@Bean</span>
+<span class="k">public</span> ChatClient <span class="f">chatClient</span>(ChatClient.Builder builder, ChatMemory chatMemory) {
+    <span class="k">return</span> builder
+        .<span class="f">defaultSystem</span>(<span class="s">"你是一个乐于助人的中文 AI 助手，回答简洁、准确、有条理。"</span>) <span class="c">// 人设</span>
+        .<span class="f">defaultAdvisors</span>(MessageChatMemoryAdvisor.<span class="f">builder</span>(chatMemory).<span class="f">build</span>()) <span class="c">// 记忆拦截器</span>
+        .<span class="f">build</span>();
+}</pre>
+    <div class="callout">
+      <code>ChatClient.Builder</code> 由 starter 依据 <code>application.yml</code> 自动配好（已含 Key、base-url、模型），
+      这里只追加「系统人设 + 记忆 Advisor」。<br>
+      <b>MessageChatMemoryAdvisor 的作用</b>：调用模型<u>前</u>按 conversationId 取出历史塞进请求；
+      拿到回答<u>后</u>把本轮对话存回。模型本身无状态，记忆全靠它。
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4">
+    <h2><span class="num">4</span>三大对话接口 <span class="file">controller/ChatController.java</span></h2>
+    <p>构造器注入全局唯一的 <code>ChatClient</code> 单例。</p>
+
+    <h3>A. 普通多轮对话 &nbsp;<code>GET /chat</code></h3>
+<pre><span class="k">return</span> chatClient.<span class="f">prompt</span>()                       <span class="c">// 开始构建一次请求</span>
+        .<span class="f">user</span>(message)                    <span class="c">// 用户输入</span>
+        .<span class="f">advisors</span>(a -&gt; a.<span class="f">param</span>(ChatMemory.CONVERSATION_ID, conversationId))
+        .<span class="f">call</span>()                            <span class="c">// 同步阻塞调用</span>
+        .<span class="f">content</span>();                        <span class="c">// 取回答的纯文本</span></pre>
+    <p><code>.advisors(...param...)</code> 不是存数据，而是告诉记忆拦截器「这次请求属于哪个会话」。不同 conversationId 互相隔离。</p>
+
+    <h3>B. 流式输出 &nbsp;<code>GET /chat/stream</code></h3>
+<pre><span class="k">return</span> chatClient.<span class="f">prompt</span>()...
+        .<span class="f">stream</span>()      <span class="c">// 边生成边推送，返回 Reactor 的 Flux&lt;String&gt;</span>
+        .<span class="f">content</span>();    <span class="c">// Spring MVC 自动按 SSE 一帧帧写出：data: xxx</span></pre>
+    <p>方法里手动 <code>response.setContentType("text/event-stream;charset=UTF-8")</code>，
+      是为了修复「直接把接口贴进浏览器地址栏，中文按 GBK 解码而乱码」的问题（真正用 <code>EventSource</code> 消费时本就按 UTF-8）。</p>
+
+    <h3>C. 结构化输出 &nbsp;<code>GET /chat/actor</code></h3>
+<pre><span class="k">return</span> chatClient.<span class="f">prompt</span>()
+        .<span class="f">user</span>(<span class="s">"列出演员 "</span> + actor + <span class="s">" 出演过的 5 部著名电影。"</span>)
+        .<span class="f">call</span>()
+        .<span class="f">entity</span>(ActorFilms.<span class="k">class</span>);   <span class="c">// ⭐ 模型 JSON 自动转成 Java 对象</span></pre>
+    <p>Spring AI 会：① 根据 <code>ActorFilms</code> 结构生成 JSON Schema 发给模型；② 模型返回 JSON；③ 自动反序列化成强类型 record。</p>
+
+    <div class="callout warn">
+      ⚠️ 因为全局挂了记忆 Advisor，它强制要求会话 id，所以 <code>/chat/actor</code> 和工具接口都传了一个固定 conversationId，
+      否则会抛 <code>conversationId cannot be null</code>。
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <h2><span class="num">5</span>结构化 DTO <span class="file">dto/ActorFilms.java</span></h2>
+<pre><span class="k">public record</span> <span class="f">ActorFilms</span>(String actor, List&lt;String&gt; films) {}</pre>
+    <p>用 Java <code>record</code> 定义不可变数据对象，字段名就是给模型的 JSON 字段名：
+      <code>{"actor":"周星驰","films":[...]}</code>。</p>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <h2><span class="num">6</span>工具集合 <span class="file">tool/DemoTools.java</span></h2>
+    <p>这是让模型「长出手脚」的类，是个 <code>@Component</code>，构造注入 <code>WeatherService</code>。
+      每个能被模型调用的方法都标了 <code>@Tool</code>：</p>
+<pre><span class="a">@Tool</span>(name = <span class="s">"getWeather"</span>,
+      description = <span class="s">"查询指定城市当前的实时天气…输入城市中文名"</span>)
+<span class="k">public</span> String <span class="f">getWeather</span>(
+        <span class="a">@ToolParam</span>(description = <span class="s">"城市中文名，例如：北京"</span>) String city) {
+    <span class="k">return</span> weatherService.<span class="f">currentWeather</span>(city);
+}</pre>
+    <div class="callout">
+      <b>description 是灵魂。</b>Spring AI 把「方法名 + 描述 + 参数（反射类型 + @ToolParam 说明）」自动生成一份 JSON Schema 发给模型；
+      模型据此判断「要不要调、怎么传参」。
+    </div>
+
+    <table>
+      <tr><th>工具方法</th><th>作用</th><th>触发示例</th></tr>
+      <tr><td><code>getWeather(city)</code></td><td>真实实时天气（Open-Meteo）</td><td>北京天气怎么样？</td></tr>
+      <tr><td><code>getCurrentTime(tz)</code></td><td>当前日期时间，可指定时区</td><td>现在几点了？</td></tr>
+      <tr><td><code>calculator(expr)</code></td><td>四则运算（自带安全解析器）</td><td>(12+8)*3 等于多少</td></tr>
+    </table>
+
+    <h3>为什么计算器要自己写解析器？</h3>
+    <p>内部是一个<b>递归下降解析器</b> <code>ExprParser</code>（文法 <code>expr → term → factor</code>），
+      而<b>不是</b>用 <code>ScriptEngine</code> / JS 引擎——为的是只能算数学表达式，
+      <b>杜绝模型传入恶意代码导致任意代码执行</b>。</p>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7">
+    <h2><span class="num">7</span>调用链记录 <span class="file">tool/ToolTraceHolder.java</span></h2>
+<pre><span class="k">private static final</span> ThreadLocal&lt;List&lt;Map&lt;String,Object&gt;&gt;&gt; TRACE = <span class="k">new</span> ThreadLocal&lt;&gt;();</pre>
+    <p>Tomcat 每个请求跑在独立线程上，用 <code>ThreadLocal</code> 存「本次请求触发了哪些工具」天然线程隔离：</p>
+    <div class="flow">
+      <div class="step">Controller 请求开始：<code>begin()</code> 初始化列表</div>
+      <div class="step">每个 @Tool 方法执行时：<code>record(工具名, 参数, 结果)</code></div>
+      <div class="step">Controller：<code>snapshot()</code> 读出调用链返回前端</div>
+      <div class="step"><code>finally { clear(); }</code> 清理，防止线程池复用串数据 / 内存泄漏</div>
+    </div>
+    <p class="lead">仅用于教学展示调用过程；生产中更推荐用 Spring AI 的 Tool Observation / Advisor 来观测。</p>
+  </section>
+
+  <!-- 8 -->
+  <section id="s8">
+    <h2><span class="num">8</span>工具接口 <span class="file">controller/ToolController.java</span></h2>
+<pre>String answer = chatClient.<span class="f">prompt</span>()
+        .<span class="f">user</span>(message)
+        .<span class="f">tools</span>(tools)          <span class="c">// ⭐ 把 DemoTools 注册给这次请求，模型才看得到 3 个工具</span>
+        .<span class="f">advisors</span>(a -&gt; a.<span class="f">param</span>(CONVERSATION_ID, <span class="s">"tool-demo"</span>))
+        .<span class="f">call</span>().<span class="f">content</span>();
+
+List&lt;...&gt; calls = ToolTraceHolder.<span class="f">snapshot</span>();
+<span class="k">return</span> Map.<span class="f">of</span>(<span class="s">"answer"</span>, answer, <span class="s">"toolCalls"</span>, calls, ...);</pre>
+    <p>和普通对话唯一的区别就是多了 <code>.tools(tools)</code>。返回「最终答案 + 工具调用链」，
+      前端才能画出 🧑问题 → 🔧工具调用 → 🤖最终回答 的过程。</p>
+  </section>
+
+  <!-- 9 -->
+  <section id="s9">
+    <h2><span class="num">9</span>真实天气服务 <span class="file">weather/WeatherService.java</span></h2>
+    <p>独立 <code>@Component</code>，封装免费、免 Key 的 <b>Open-Meteo</b>，分两步：</p>
+    <div class="grid2">
+      <div class="mini"><h4>① geocoding 接口</h4><p>城市中文名 → 经纬度（用 UriComponentsBuilder 编码中文）</p></div>
+      <div class="mini"><h4>② forecast 接口</h4><p>经纬度 → 实时天气 JSON（温度/湿度/风/天气码）</p></div>
+    </div>
+    <p>用 Jackson 把 JSON 映射成一组 <code>record</code>（<code>@JsonProperty("temperature_2m")</code> 对应下划线字段），
+      再用 <code>describeWeather()</code>（WMO 天气码 → 中文）和 <code>windDirection()</code>（角度 → 八方位）拼成中文句子。</p>
+    <p>HTTP 客户端用 <code>JdkClientHttpRequestFactory</code>（JDK 内置 HttpClient）。</p>
+  </section>
+
+  <!-- 10 -->
+  <section id="s10">
+    <h2><span class="num">10</span>配置文件 <span class="file">application.yml</span></h2>
+<pre>spring.ai.openai:
+  api-key:  <span class="s">${OPENAI_API_KEY:ark-...}</span>          <span class="c"># 优先读环境变量，没有用默认值</span>
+  base-url: <span class="s">.../api/plan/v3</span>                <span class="c"># 2.x 要带完整版本前缀，SDK 自动拼 /chat/completions</span>
+  chat.options:
+    model: <span class="s">glm-5.3</span>
+    temperature: <span class="s">0.7</span></pre>
+    <div class="callout warn">
+      <b>Spring AI 1.x → 2.x 的坑：</b>2.x 改用官方 OpenAI SDK，<code>base-url</code> 必须含完整版本段，
+      1.x 的 <code>spring.ai.openai.chat.completions-path</code> 在 2.x 已移除（配了不生效）。
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section id="s11">
+    <h2><span class="num">11</span>一次工具调用的完整时序（最关键）</h2>
+    <p>以「北京天气怎么样？」为例 —— <b>一次问答背后通常是 2 次模型请求</b>：</p>
+    <div class="flow">
+      <div class="step user">浏览器发来 <code>GET /tool/chat?message=北京天气</code></div>
+      <div class="step">ToolController：<code>ThreadLocal.begin()</code>，<code>.tools(demoTools)</code></div>
+      <div class="step">经过 MessageChatMemoryAdvisor（取/存历史），组装请求</div>
+      <div class="step ai">第 1 次请求模型：发送 [系统提示 + 用户问题 + 3 个工具的 JSON Schema]</div>
+      <div class="step ai">模型判断需要天气 → 返回 <code>tool_call: getWeather({"city":"北京"})</code>（此刻还不是最终答案）</div>
+      <div class="step tool">Spring AI 框架<b>自动反射执行</b> <code>DemoTools.getWeather("北京")</code><br>
+        └─ WeatherService → Open-Meteo 两次 HTTP → 「北京当前：大部晴朗 21.2℃…」</div>
+      <div class="step ai">第 2 次请求模型：框架把工具结果作为 tool 消息回传</div>
+      <div class="step ai">模型基于真实数据，生成自然语言最终答案</div>
+      <div class="step">Controller 用 <code>snapshot()</code> 拿到工具链，组装 <code>{answer, toolCalls}</code> 返回</div>
+      <div class="step user">前端渲染：问题 → 工具调用（参数/返回值）→ 最终回答</div>
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section id="s12">
+    <h2><span class="num">12</span>核心知识点 &amp; 踩过的坑</h2>
+    <div class="grid2">
+      <div class="mini"><h4>🧩 三大 AI 能力</h4><p><code>.call()/.stream()</code> 对话 · <code>.entity()</code> 结构化 · <code>.tools()</code> 工具调用</p></div>
+      <div class="mini"><h4>🧠 无状态模型 + 外部记忆</h4><p>记忆靠 Advisor + ChatMemory，模型本身不记任何东西</p></div>
+      <div class="mini"><h4>🔒 工具安全</h4><p>计算器自写解析器不用脚本引擎；天气异常返回友好字符串而非 500</p></div>
+      <div class="mini"><h4>♻️ ThreadLocal 必清</h4><p>try/finally 里 clear()，避免线程池复用串数据</p></div>
+    </div>
+
+    <h3>过程中解决的典型问题</h3>
+    <table>
+      <tr><th>现象</th><th>原因</th><th>解决</th></tr>
+      <tr><td>调用模型 404</td><td>base-url 被拼成 <code>/api/v3/v1/chat/completions</code></td><td>2.x 用完整版本前缀 <code>/api/plan/v3</code></td></tr>
+      <tr><td>SSE 中文乱码</td><td>响应头缺 charset，浏览器按 GBK 解码</td><td>显式 <code>text/event-stream;charset=UTF-8</code></td></tr>
+      <tr><td>天气「未找到城市」</td><td>RestClient 把已编码的 % 二次编码</td><td>UriComponentsBuilder 构建参数 + JDK HttpClient</td></tr>
+      <tr><td>conversationId null</td><td>全局记忆 Advisor 强制要求会话 id</td><td>每次请求都传 conversationId</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <b>想扩展自己的业务能力？</b> 照着 <code>DemoTools</code> 加一个带 <code>@Tool</code> 的方法即可
+      （查数据库、调内部 HTTP API、发邮件……），把方法的 description 写清楚，模型就会在合适时机自动调用。
+    </div>
+  </section>
+
+  <p class="lead" style="text-align:center;margin-top:30px">— End · Spring AI Demo 代码讲解 —</p>
+</main>
+
+<a class="top" href="#" title="回到顶部">↑</a>
+</body>
+</html>
