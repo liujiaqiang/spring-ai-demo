@@ -3,6 +3,7 @@ package com.example.springaidemo.controller;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,10 +31,13 @@ public class MemoryController {
 
     private final ChatMemory chatMemory;
     private final ChatMemoryRepository chatMemoryRepository;
+    private final int maxMessages;
 
-    public MemoryController(ChatMemory chatMemory, ChatMemoryRepository chatMemoryRepository) {
+    public MemoryController(ChatMemory chatMemory, ChatMemoryRepository chatMemoryRepository,
+                            @Value("${spring.ai.chat.memory.max-messages:20}") int maxMessages) {
         this.chatMemory = chatMemory;
         this.chatMemoryRepository = chatMemoryRepository;
+        this.maxMessages = maxMessages;
     }
 
     /** 列出当前内存中所有会话及其消息条数。 */
@@ -45,7 +49,10 @@ public class MemoryController {
                         id,
                         chatMemoryRepository.findByConversationId(id).size()))
                 .toList();
-        return Map.of("total", conversations.size(), "conversations", conversations);
+        return Map.of(
+                "total", conversations.size(),
+                "maxMessages", maxMessages,
+                "conversations", conversations);
     }
 
     /** 查看某个会话记忆里的完整消息列表（按时间顺序）。 */
@@ -58,6 +65,7 @@ public class MemoryController {
         return Map.of(
                 "conversationId", conversationId,
                 "count", messages.size(),
+                "maxMessages", maxMessages,
                 "messages", messages);
     }
 

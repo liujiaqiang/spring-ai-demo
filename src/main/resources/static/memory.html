@@ -100,7 +100,7 @@
       <p>左侧流式多轮对话，右侧实时查看 Spring AI 内存中按 conversationId 存储的消息</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <span class="badge">MessageWindowChatMemory · 20 条窗口</span>
+      <span class="badge" id="windowBadge">MessageWindowChatMemory</span>
       <a class="icon-btn" href="/index.html">← 返回功能首页</a>
     </div>
   </div>
@@ -210,6 +210,8 @@
     qs('input').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
 
     // ---------- 记忆面板 ----------
+    // 窗口上限由后端返回（spring.ai.chat.memory.max-messages），不在此写死
+    let windowLimit = null;
     async function loadConversations() {
       const r = await fetch('/memory/conversations');
       return r.ok ? (await r.json()) : { conversations: [] };
@@ -258,7 +260,12 @@
         box.appendChild(item);
       });
       box.scrollTop = box.scrollHeight;
-      qs('memCount').textContent = '当前会话：' + msgs.length + ' 条 / 上限 20';
+
+      // 上限以后端返回为准，并同步到顶部徽标
+      if (typeof detail.maxMessages === 'number') windowLimit = detail.maxMessages;
+      qs('memCount').textContent = '当前会话：' + msgs.length + ' 条'
+        + (windowLimit ? ' / 上限 ' + windowLimit : '');
+      if (windowLimit) qs('windowBadge').textContent = 'MessageWindowChatMemory · ' + windowLimit + ' 条窗口';
     }
 
     qs('refresh').onclick = loadMemory;

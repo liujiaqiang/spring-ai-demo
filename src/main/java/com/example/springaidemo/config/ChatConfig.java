@@ -5,6 +5,7 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,14 +26,16 @@ import org.springframework.context.annotation.Configuration;
 public class ChatConfig {
 
     /**
-     * 窗口记忆：每个会话保留最近 20 条消息；底层存储使用容器中自动装配的 ChatMemoryRepository
+     * 窗口记忆：每个会话最多保留 {@code spring.ai.chat.memory.max-messages} 条消息（默认 20，
+     * 按“消息条数”而非 token 数计算）；底层存储使用容器中自动装配的 ChatMemoryRepository
      * （MySQL 环境下是 JdbcChatMemoryRepository）。
      */
     @Bean
-    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository,
+                                 @Value("${spring.ai.chat.memory.max-messages:20}") int maxMessages) {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(20)
+                .maxMessages(maxMessages)
                 .build();
     }
 

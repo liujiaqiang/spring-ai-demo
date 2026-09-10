@@ -168,7 +168,7 @@ ORDER BY sequence_id;
 MessageChatMemoryAdvisor   ← 拦截器：请求前把历史拼进 prompt，响应后存回复
         │
         ▼
-MessageWindowChatMemory    ← 策略：每个会话最多保留 20 条，超限淘汰最旧消息（SystemMessage 保留）
+MessageWindowChatMemory    ← 策略：每个会话最多保留 N 条（默认 20），超限淘汰最旧消息（SystemMessage 保留）
         │
         ▼
 ChatMemoryRepository       ← 存储：MySQL 环境用 JdbcChatMemoryRepository，否则用内存 Map
@@ -177,7 +177,9 @@ ChatMemoryRepository       ← 存储：MySQL 环境用 JdbcChatMemoryRepository
 - **大模型本身无状态**，所谓"多轮对话"就是 Advisor 在每次调用前，按 `conversationId` 把历史消息从存储中读出、重新拼进 prompt；`conversationId` 只是存储的 key。
 - `before()`：读取历史 → 拼到本次 prompt 前 → 先存入本轮用户消息；`after()`：模型返回后存入 assistant 回复。
 - 流式场景下 token 照常实时推送，记忆在**整个流结束时聚合后只写入一次**。
-- 窗口按**消息条数**（20 条，非 token 数）裁剪，且裁剪点对齐到 USER 消息，避免留下"没有对应提问的回复"。
+- 窗口按**消息条数**裁剪（默认 20 条，非 token 数；一轮问答 = 2 条消息），且裁剪点对齐到 USER 消息，避免留下"没有对应提问的回复"。
+- **裁剪发生在写入时，不是读取时**：`add()` 会「读旧 → 裁到上限 → 整段覆盖写回」，所以库里每个会话最多只有 N 行，`get()` 直读即可。代价是每存一条消息都会重写该会话（N 很小，开销可忽略）。打开 SQL 日志即可看到每轮 3 次 SELECT + 2 次 DELETE + 2 次批量 INSERT。
+- 窗口大小可配置：`spring.ai.chat.memory.max-messages`（默认 20）。调小省 token，调大记得更多轮上下文。
 
 ## 工具调用（Function Calling）
 
@@ -224,7 +226,7 @@ src/main/resources/
 └── static/
     ├── index.html                      # 四标签页演示界面
     └── memory.html                     # 聊天 × 记忆调试台
-src/test/                               # 109 个测试（./mvnw test）
+src/test/                               # 111 个测试（./mvnw test）
 ├── java/.../config/ChatConfigTest.java
 ├── java/.../controller/MemoryControllerTest.java   # 记忆接口切片测试
 ├── java/.../SpringAiDemoApplicationTests.java      # 含 JDBC 记忆存取往返集成测试
@@ -237,7 +239,7 @@ src/test/                               # 109 个测试（./mvnw test）
 ./mvnw test
 ```
 
-- 共 109 个测试：纯单元测试（工具、窗口策略）、Web 切片测试（MockMvc）、Spring 上下文集成测试。
+- 共 111 个测试：纯单元测试（工具、窗口策略）、Web 切片测试（MockMvc）、Spring 上下文集成测试。
 - 测试环境使用**内嵌 H2**（`MODE=MySQL`）跑真实的 JDBC 记忆链路（自动建表 → 写入 → 查询 → 删除），因此无需启动本地 MySQL；生产运行时才连 MySQL。
 
 ## 常见问题
@@ -247,5 +249,5 @@ src/test/                               # 109 个测试（./mvnw test）
 - **模型名报错**：模型名要填对应厂商真实存在的模型 / 接入点 ID。
 - **启动报数据库连接失败**：确认 MySQL 已启动、库已创建、`application-local.yml` 中用户名/密码/端口正确。MySQL 5.7 配合新驱动一般可用，如遇协议错误可锁定较低版本驱动或升级到 8.x。
 - **表没有自动创建**：MySQL 必须显式配置 `spring.ai.chat.memory.repository.jdbc.initialize-schema: always`（内嵌库默认即建，非内嵌库默认不建）。
-- **重启后记忆还在吗**：在。消息已持久化到 `SPRING_AI_CHAT_MEMORY` 表；但每个会话只保留最近 20 条消息（窗口策略）。要彻底重置可删表或调用 `/memory/clear`。
+- **重启后记忆还在吗**：在。消息已持久化到 `SPRING_AI_CHAT_MEMORY` 表；但每个会话只保留最近 N 条消息（窗口策略，`spring.ai.chat.memory.max-messages`，默认 20）。要彻底重置可删表或调用 `/memory/clear`。
 - **不使用数据库可以吗**：可以。删除/注释 `application-local.yml` 中的 `spring.datasource` 配置（并不加 JDBC 依赖），自动装配会退回 `InMemoryChatMemoryRepository`（进程内存，重启清空）。

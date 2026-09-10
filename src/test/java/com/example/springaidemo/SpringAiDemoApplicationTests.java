@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +78,29 @@ class SpringAiDemoApplicationTests {
 
             chatMemory.clear(cid);
             assertThat(chatMemory.get(cid)).isEmpty();
+        } finally {
+            chatMemory.clear(cid);
+        }
+    }
+
+    @Test
+    void chatMemoryWindowHonoursConfiguredMaxMessages() {
+        // 测试未设置 spring.ai.chat.memory.max-messages，应落到默认值 20。
+        // 这条用例同时验证 @Value 默认值真的注入进了 MessageWindowChatMemory。
+        String cid = "window-it-" + System.nanoTime();
+        try {
+            List<Message> batch = new ArrayList<>();
+            for (int i = 1; i <= 25; i++) {
+                batch.add(new UserMessage("m" + i));
+            }
+            chatMemory.add(cid, batch);
+
+            List<Message> retained = chatMemory.get(cid);
+            assertThat(retained).hasSize(20);
+            assertThat(retained.getFirst().getText()).isEqualTo("m6");
+            assertThat(retained.getLast().getText()).isEqualTo("m25");
+            // 数据库里也只应该留下 20 行（写入时已裁剪，不是读取时过滤）
+            assertThat(chatMemoryRepository.findByConversationId(cid)).hasSize(20);
         } finally {
             chatMemory.clear(cid);
         }

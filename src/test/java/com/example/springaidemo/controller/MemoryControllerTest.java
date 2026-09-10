@@ -12,6 +12,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,10 +44,11 @@ class MemoryControllerTest {
         }
 
         @Bean
-        ChatMemory chatMemory(ChatMemoryRepository repository) {
+        ChatMemory chatMemory(ChatMemoryRepository repository,
+                              @Value("${spring.ai.chat.memory.max-messages:20}") int maxMessages) {
             return MessageWindowChatMemory.builder()
                     .chatMemoryRepository(repository)
-                    .maxMessages(20)
+                    .maxMessages(maxMessages)
                     .build();
         }
     }
@@ -74,6 +76,8 @@ class MemoryControllerTest {
             mockMvc.perform(get("/memory/conversations"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.total").value(0))
+                    // 窗口上限随配置下发，供前端展示
+                    .andExpect(jsonPath("$.maxMessages").value(20))
                     .andExpect(jsonPath("$.conversations", hasSize(0)));
         }
 
@@ -107,6 +111,7 @@ class MemoryControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.conversationId").value("u1"))
                     .andExpect(jsonPath("$.count").value(2))
+                    .andExpect(jsonPath("$.maxMessages").value(20))
                     .andExpect(jsonPath("$.messages[0].type").value("user"))
                     .andExpect(jsonPath("$.messages[0].text").value("我叫张三"))
                     .andExpect(jsonPath("$.messages[1].type").value("assistant"))

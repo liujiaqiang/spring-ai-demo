@@ -12,6 +12,8 @@ spring:
     # 对话记忆持久化到数据库（JdbcChatMemoryRepository）
     chat:
       memory:
+        # 每个会话保留的消息条数上限（一轮问答 = 2 条），默认 20
+        max-messages: 20
         repository:
           jdbc:
             # MySQL 等非内嵌数据库需显式开启，首次启动自动建表 SPRING_AI_CHAT_MEMORY
@@ -23,3 +25,11 @@ spring:
     username: your-mysql-username
     password: your-mysql-password
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+# 对话记忆的 SQL 调试（按需打开）：
+# 打开后每轮对话会打印 3 次 SELECT + 2 次 DELETE + 2 次批量 INSERT，
+# 可直观看到 MessageWindowChatMemory「读旧 → 裁到上限 → 整段覆盖写回」的行为。
+# logging:
+#   level:
+#     org.springframework.jdbc.core.JdbcTemplate: DEBUG
+#     org.springframework.jdbc.core.StatementCreatorUtils: TRACE   # 想看 SQL 入参再加这行

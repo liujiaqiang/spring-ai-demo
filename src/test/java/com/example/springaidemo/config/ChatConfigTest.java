@@ -33,14 +33,21 @@ import static org.mockito.Mockito.when;
  */
 class ChatConfigTest {
 
+    /** 与 {@code spring.ai.chat.memory.max-messages} 的默认值保持一致。 */
+    private static final int DEFAULT_MAX_MESSAGES = 20;
+
     private final ChatConfig config = new ChatConfig();
 
     private final ChatMemoryRepository repository = new InMemoryChatMemoryRepository();
 
+    private ChatMemory memory(int maxMessages) {
+        return config.chatMemory(repository, maxMessages);
+    }
+
     @Test
     void chatMemoryIsBackedByProvidedRepository() {
         // ChatMemory 写入后，注入的 repository 应能直接读到（调试接口依赖这一点）
-        ChatMemory memory = config.chatMemory(repository);
+        ChatMemory memory = memory(DEFAULT_MAX_MESSAGES);
         memory.add("c1", new UserMessage("hello"));
 
         assertThat(repository.findByConversationId("c1"))
@@ -49,8 +56,8 @@ class ChatConfigTest {
     }
 
     @Test
-    void chatMemoryKeepsAtMost20Messages() {
-        ChatMemory memory = config.chatMemory(repository);
+    void chatMemoryKeepsAtMost20MessagesByDefault() {
+        ChatMemory memory = memory(DEFAULT_MAX_MESSAGES);
 
         assertThat(memory).isInstanceOf(MessageWindowChatMemory.class);
 
@@ -70,11 +77,26 @@ class ChatConfigTest {
     }
 
     @Test
+    void chatMemoryHonoursConfiguredWindowSize() {
+        // 窗口大小可配：调小后同样只保留最近的 N 条
+        ChatMemory memory = memory(6);
+        List<Message> batch = IntStream.rangeClosed(1, 10)
+                .<Message>mapToObj(i -> new UserMessage("m" + i))
+                .toList();
+        memory.add("c1", new ArrayList<>(batch));
+
+        List<Message> retained = memory.get("c1");
+        assertThat(retained).hasSize(6);
+        assertThat(retained.getFirst().getText()).isEqualTo("m5");
+        assertThat(retained.getLast().getText()).isEqualTo("m10");
+    }
+
+    @Test
     void chatClientConfiguresSystemPromptAndMemoryAdvisor() {
         ChatClient.Builder builder = mock(ChatClient.Builder.class, RETURNS_SELF);
         ChatClient built = mock(ChatClient.class);
         when(builder.build()).thenReturn(built);
-        ChatMemory memory = config.chatMemory(repository);
+        ChatMemory memory = memory(DEFAULT_MAX_MESSAGES);
 
         ChatClient client = config.chatClient(builder, memory);
 
@@ -90,7 +112,7 @@ class ChatConfigTest {
 
     @Test
     void clearingMemoryRemovesConversation() {
-        ChatMemory memory = config.chatMemory(repository);
+        ChatMemory memory = memory(DEFAULT_MAX_MESSAGES);
         memory.add("c1", new ArrayList<>(List.of(new UserMessage("hello"), new AssistantMessage("hi"))));
         assertThat(memory.get("c1")).hasSize(2);
 
