@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * <pre>
  *   export OPENAI_API_KEY=你的Key
  *   # 可选：默认走 OpenAI；接其它厂商时覆盖下面两项
- *   # export SPRING_AI_OPENAI_BASE_URL=https://api.deepseek.com
+ *   # export SPRING_AI_OPENAI_BASE_URL=<a href="https://api.deepseek.com">...</a>
  *   # export SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL=deepseek-chat
  * </pre>
  */
