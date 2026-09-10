@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聊天 + 记忆调试 · Spring AI Demo</title>
+  <style>
+    :root {
+      --bg: #f1f5f9; --card: #ffffff; --line: #e5e7eb; --text: #0f172a; --muted: #64748b;
+      --brand: #4f46e5; --brand2: #2563eb; --user: linear-gradient(135deg,#4f46e5,#2563eb);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #e0e7ff 0%, transparent 55%),
+                  radial-gradient(1000px 500px at -10% 0%, #dbeafe 0%, transparent 50%), var(--bg);
+      color: var(--text);
+    }
+    a { color: var(--brand2); text-decoration: none; }
+
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 0; flex-wrap: wrap; }
+    .top h1 { font-size: 20px; margin: 0; }
+    .top p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff; }
+
+    .layout { display: grid; grid-template-columns: 1fr 380px; gap: 16px; padding: 16px 20px 20px; height: calc(100vh - 70px); }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; height: auto; } }
+
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(15,23,42,.08); display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+
+    /* 左栏：聊天 */
+    .chat-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chat-head label { font-size: 13px; color: var(--muted); }
+    .chat-head input#cid { width: 210px; padding: 7px 10px; font-size: 13px; border: 1px solid var(--line); border-radius: 9px; outline: none; background: #f8fafc; font-family: ui-monospace, Menlo, monospace; }
+    .chat-head input#cid:focus { border-color: var(--brand); background: #fff; }
+
+    .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .msg { display: flex; gap: 10px; align-items: flex-end; }
+    .msg.user { flex-direction: row-reverse; }
+    .avatar { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex: 0 0 auto; background: #f1f5f9; }
+    .msg.user .avatar { background: #dbeafe; }
+    .bubble { max-width: 80%; padding: 11px 14px; border-radius: 16px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; font-size: 15px; }
+    .msg.ai .bubble { background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+    .msg.user .bubble { background: var(--user); color: #fff; border-bottom-right-radius: 5px; }
+    .bubble.err { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .cursor { display: inline-block; width: 8px; height: 16px; background: var(--brand); margin-left: 2px; vertical-align: -2px; animation: blink 1s steps(2) infinite; border-radius: 1px; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .dots span { display: inline-block; width: 6px; height: 6px; margin-right: 3px; background: #94a3b8; border-radius: 50%; animation: bounce 1.2s infinite; }
+    .dots span:nth-child(2){ animation-delay: .15s } .dots span:nth-child(3){ animation-delay: .3s }
+    @keyframes bounce { 0%,60%,100%{ transform: translateY(0); opacity:.5 } 30%{ transform: translateY(-4px); opacity:1 } }
+    .empty { color: #94a3b8; text-align: center; margin: auto; font-size: 14px; }
+    .empty .em { font-size: 40px; display: block; margin-bottom: 10px; }
+
+    .bar { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .bar input { flex: 1; padding: 13px 15px; font-size: 15px; border: 1px solid var(--line); border-radius: 12px; outline: none; background: #f8fafc; }
+    .bar input:focus { border-color: var(--brand); background: #fff; }
+    button.btn { padding: 12px 16px; font-size: 14px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all .15s; white-space: nowrap; }
+    button.primary { background: var(--user); color: #fff; }
+    button.primary:disabled { opacity: .55; cursor: not-allowed; }
+    button.ghost { background: #f1f5f9; color: var(--muted); font-weight: 500; }
+    button.ghost:hover { background: #e2e8f0; }
+    button.stop { background: #fee2e2; color: #dc2626; }
+
+    /* 右栏：记忆面板 */
+    .mem-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .mem-head .t { font-weight: 700; font-size: 15px; }
+    .mem-head .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .icon-btn { border: 1px solid var(--line); background: #fff; border-radius: 9px; padding: 6px 10px; font-size: 12.5px; cursor: pointer; color: var(--muted); }
+    .icon-btn:hover { background: #f8fafc; color: var(--text); }
+
+    .conv-list { max-height: 160px; overflow-y: auto; border-bottom: 1px solid var(--line); padding: 6px; flex: 0 0 auto; }
+    .conv { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 9px; cursor: pointer; font-size: 13px; margin-bottom: 2px; }
+    .conv:hover { background: #f8fafc; }
+    .conv.active { background: #eef2ff; }
+    .conv .cid-name { flex: 1; font-family: ui-monospace, Menlo, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv .cnt { font-size: 11.5px; color: var(--muted); background: #f1f5f9; border-radius: 999px; padding: 1px 8px; flex: 0 0 auto; }
+    .conv.active .cnt { background: #e0e7ff; color: #4338ca; }
+    .conv .x { border: 0; background: transparent; color: #cbd5e1; cursor: pointer; font-size: 14px; padding: 0 2px; }
+    .conv .x:hover { color: #dc2626; }
+
+    .mem-msgs { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .m-item { border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px; font-size: 13px; line-height: 1.6; }
+    .m-item .role { font-size: 11px; font-weight: 700; display: inline-block; padding: 1px 8px; border-radius: 999px; margin-bottom: 5px; }
+    .m-item.user .role { background: #dbeafe; color: #1d4ed8; }
+    .m-item.assistant .role { background: #dcfce7; color: #15803d; }
+    .m-item.system .role { background: #fef3c7; color: #b45309; }
+    .m-item.tool .role { background: #f1e8ff; color: #7e22ce; }
+    .m-item .txt { white-space: pre-wrap; word-break: break-word; color: #1e293b; }
+    .m-empty { color: #94a3b8; font-size: 13px; text-align: center; margin: auto; }
+    .mem-foot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+    .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; margin-right: 5px; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <h1>🧠 聊天 × 记忆调试台</h1>
+      <p>左侧流式多轮对话，右侧实时查看 Spring AI 内存中按 conversationId 存储的消息</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="badge">MessageWindowChatMemory · 20 条窗口</span>
+      <a class="icon-btn" href="/index.html">← 返回功能首页</a>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- 左：聊天 -->
+    <section class="card">
+      <div class="chat-head">
+        <label>会话 ID：</label>
+        <input type="text" id="cid" />
+        <button class="btn ghost" id="newConv" style="padding:7px 12px">🎲 新会话</button>
+        <span style="font-size:12px;color:var(--muted);margin-left:auto">同一会话 ID 共享多轮记忆</span>
+      </div>
+      <div class="chat" id="chat">
+        <div class="empty" id="emptyHint"><span class="em">💬</span>发条消息试试：先说「我叫张三」，再问「我叫什么名字？」<br>右边会实时显示记忆内容</div>
+      </div>
+      <div class="bar">
+        <input type="text" id="input" placeholder="输入消息，回车发送…" />
+        <button class="btn primary" id="send">发送</button>
+        <button class="btn stop" id="stop" style="display:none">停止</button>
+      </div>
+    </section>
+
+    <!-- 右：记忆 -->
+    <section class="card">
+      <div class="mem-head">
+        <div>
+          <div class="t">🗂️ 对话记忆</div>
+          <div class="sub">数据源：/memory/* 接口（InMemoryChatMemoryRepository）</div>
+        </div>
+        <button class="icon-btn" id="refresh" title="重新从后端拉取">⟳ 刷新</button>
+      </div>
+      <div class="conv-list" id="convList"></div>
+      <div class="mem-msgs" id="memMsgs">
+        <div class="m-empty">暂无会话</div>
+      </div>
+      <div class="mem-foot">
+        <span><span class="live-dot"></span>每次回答结束自动刷新</span>
+        <span id="memCount"></span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const qs = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // ---------- 会话管理 ----------
+    const newId = () => 'web-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    qs('cid').value = newId();
+    let viewedCid = qs('cid').value;   // 右栏正在查看的会话（默认跟随左栏）
+
+    qs('newConv').onclick = () => {
+      qs('cid').value = newId();
+      qs('chat').innerHTML = '<div class="empty"><span class="em">💬</span>新会话已开始，记忆相互隔离</div>';
+      viewedCid = qs('cid').value;
+      loadMemory();
+    };
+
+    // ---------- 聊天（SSE 流式） ----------
+    const chat = qs('chat');
+    function scrollBottom() { chat.scrollTop = chat.scrollHeight; }
+    function addMsg(role) {
+      const empty = chat.querySelector('.empty'); if (empty) empty.remove();
+      const wrap = document.createElement('div'); wrap.className = 'msg ' + role;
+      const av = document.createElement('div'); av.className = 'avatar'; av.textContent = role === 'user' ? '🧑' : '🤖';
+      const bub = document.createElement('div'); bub.className = 'bubble';
+      wrap.appendChild(av); wrap.appendChild(bub); chat.appendChild(wrap);
+      scrollBottom();
+      return bub;
+    }
+    const thinking = '<span class="dots"><span></span><span></span><span></span></span>';
+
+    let es = null;
+    function send() {
+      const input = qs('input'), message = input.value.trim();
+      const cid = qs('cid').value.trim();
+      if (!message || es) return;
+      if (!cid) { alert('请填写会话 ID'); return; }
+      viewedCid = cid;
+
+      addMsg('user').textContent = message;
+      input.value = '';
+      const ai = addMsg('ai'); ai.innerHTML = thinking;
+      qs('send').disabled = true; qs('stop').style.display = '';
+
+      es = new EventSource('/chat/stream?message=' + encodeURIComponent(message) + '&conversationId=' + encodeURIComponent(cid));
+      let got = '';
+      es.onmessage = e => {
+        got += e.data;
+        ai.textContent = got;
+        const cur = document.createElement('span'); cur.className = 'cursor'; ai.appendChild(cur);
+        scrollBottom();
+      };
+      const finish = async (errMsg) => {
+        if (es) { es.close(); es = null; }
+        qs('send').disabled = false; qs('stop').style.display = 'none';
+        if (errMsg) { ai.classList.add('err'); ai.textContent = errMsg; }
+        else if (!got) { ai.textContent = '（没有返回内容）'; }
+        await loadMemory();   // 回答结束后自动刷新记忆面板
+      };
+      es.onerror = () => finish();   // 服务端正常结束流也会触发 onerror
+      qs('stop').onclick = () => finish('已停止生成');
+    }
+    qs('send').onclick = send;
+    qs('input').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+    // ---------- 记忆面板 ----------
+    async function loadConversations() {
+      const r = await fetch('/memory/conversations');
+      return r.ok ? (await r.json()) : { conversations: [] };
+    }
+    async function loadMessages(cid) {
+      const r = await fetch('/memory/messages?conversationId=' + encodeURIComponent(cid));
+      return r.ok ? (await r.json()) : { messages: [] };
+    }
+
+    async function loadMemory() {
+      const data = await loadConversations();
+      const convs = data.conversations || [];
+
+      // 当前会话若还没出现在列表里（首轮请求发出前），也允许查看
+      const cid = viewedCid;
+      const list = qs('convList');
+      list.innerHTML = convs.length ? '' : '<div class="m-empty" style="padding:14px">还没有任何会话</div>';
+      convs.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'conv' + (c.conversationId === cid ? ' active' : '');
+        row.innerHTML = '<span class="cid-name" title="' + esc(c.conversationId) + '">' + esc(c.conversationId) +
+          '</span><span class="cnt">' + c.messageCount + ' 条</span>' +
+          '<button class="x" title="清空该会话记忆">✕</button>';
+        row.querySelector('.cid-name').onclick = () => { viewedCid = c.conversationId; loadMemory(); };
+        row.querySelector('.x').onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm('确认清空会话「' + c.conversationId + '」的记忆？')) return;
+          await fetch('/memory/clear?conversationId=' + encodeURIComponent(c.conversationId), { method: 'DELETE' });
+          if (c.conversationId === qs('cid').value) {
+            qs('chat').innerHTML = '<div class="empty"><span class="em">🧠</span>记忆已清空，再问「我叫什么名字？」模型就不知道了</div>';
+          }
+          if (viewedCid === c.conversationId) viewedCid = qs('cid').value;
+          loadMemory();
+        };
+        list.appendChild(row);
+      });
+
+      const detail = await loadMessages(cid);
+      const msgs = detail.messages || [];
+      const box = qs('memMsgs');
+      box.innerHTML = msgs.length ? '' : '<div class="m-empty">该会话暂无记忆消息<br>（发送第一条消息后出现）</div>';
+      msgs.forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'm-item ' + esc(m.type);
+        item.innerHTML = '<span class="role">' + esc(m.type) + '</span><div class="txt">' + esc(m.text) + '</div>';
+        box.appendChild(item);
+      });
+      box.scrollTop = box.scrollHeight;
+      qs('memCount').textContent = '当前会话：' + msgs.length + ' 条 / 上限 20';
+    }
+
+    qs('refresh').onclick = loadMemory;
+    loadMemory();   // 页面打开即拉一次
+  </script>
+</body>
+</html>

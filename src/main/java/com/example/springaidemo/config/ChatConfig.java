@@ -3,6 +3,8 @@ package com.example.springaidemo.config;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,12 +19,23 @@ import org.springframework.context.annotation.Configuration;
 public class ChatConfig {
 
     /**
+     * 记忆的底层存储：内存 Map（conversationId -> 消息列表）。
+     * 单独声明成 Bean，方便调试接口（如 MemoryController）注入后查看所有会话。
+     * 换成 JdbcChatMemoryRepository 等实现时，只需替换这个 Bean。
+     */
+    @Bean
+    public ChatMemoryRepository chatMemoryRepository() {
+        return new InMemoryChatMemoryRepository();
+    }
+
+    /**
      * 内存版对话记忆：每个会话保留最近 20 条消息（进程重启后清空）。
      * 如需持久化，可换成 JdbcChatMemory / RedisChatMemory。
      */
     @Bean
-    public ChatMemory chatMemory() {
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
         return MessageWindowChatMemory.builder()
+                .chatMemoryRepository(chatMemoryRepository)
                 .maxMessages(20)
                 .build();
     }
