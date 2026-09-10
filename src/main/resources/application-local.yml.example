@@ -1,4 +1,4 @@
-# 复制本文件为 application-local.yml，填入你自己的 Key 即可；application-local.yml 不会被提交。
+# 复制本文件为 application-local.yml，填入你自己的 Key 与数据库连接；application-local.yml 不会被提交。
 # 也可以不建文件，直接用环境变量：export OPENAI_API_KEY=sk-xxxx
 spring:
   ai:
@@ -8,3 +8,18 @@ spring:
       # 如用其它厂商，连同 base-url / model 一起改（详见 README）
       # base-url: https://api.deepseek.com/v1
       # chat.options.model: deepseek-chat
+
+    # 对话记忆持久化到数据库（JdbcChatMemoryRepository）
+    chat:
+      memory:
+        repository:
+          jdbc:
+            # MySQL 等非内嵌数据库需显式开启，首次启动自动建表 SPRING_AI_CHAT_MEMORY
+            initialize-schema: always
+
+  datasource:
+    # 先在本地 MySQL 中创建数据库，例如：CREATE DATABASE spring_ai_demo DEFAULT CHARACTER SET utf8mb4;
+    url: jdbc:mysql://localhost:3306/spring_ai_demo?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: your-mysql-username
+    password: your-mysql-password
+    driver-class-name: com.mysql.cj.jdbc.Driver

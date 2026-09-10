@@ -25,23 +25,21 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link ChatConfig} 的纯单元测试（不启动 Spring 容器）：
- * 校验记忆存储 Bean、消息窗口容量（20 条）以及 ChatClient 的默认系统提示词与记忆 Advisor 装配。
+ * 校验 ChatMemory 基于注入的 Repository 工作、消息窗口容量（20 条）
+ * 以及 ChatClient 的默认系统提示词与记忆 Advisor 装配。
+ *
+ * <p>Repository Bean 已交由 Spring AI 自动装配（MySQL 环境下为 JdbcChatMemoryRepository，
+ * 单元测试里用内存版替身）。
  */
 class ChatConfigTest {
 
     private final ChatConfig config = new ChatConfig();
 
-    private final ChatMemoryRepository repository = config.chatMemoryRepository();
-
-    @Test
-    void chatMemoryRepositoryIsInMemoryImpl() {
-        assertThat(repository).isInstanceOf(InMemoryChatMemoryRepository.class);
-        assertThat(config.chatMemoryRepository()).isNotSameAs(repository);
-    }
+    private final ChatMemoryRepository repository = new InMemoryChatMemoryRepository();
 
     @Test
     void chatMemoryIsBackedByProvidedRepository() {
-        // 同一个 repository 实例：ChatMemory 写入后，repository 应能直接读到（调试接口依赖这一点）
+        // ChatMemory 写入后，注入的 repository 应能直接读到（调试接口依赖这一点）
         ChatMemory memory = config.chatMemory(repository);
         memory.add("c1", new UserMessage("hello"));
 

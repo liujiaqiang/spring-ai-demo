@@ -4,3 +4,14 @@ spring:
   ai:
     openai:
       api-key: test-dummy-key
+    # 对话记忆走 JDBC 实现，测试库用内嵌 H2（无需本地 MySQL）。
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: embedded
+  datasource:
+    url: jdbc:h2:mem:chatmem;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
