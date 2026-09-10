@@ -1,11 +1,13 @@
 package com.example.springaidemo;
 
 import com.example.springaidemo.controller.ChatController;
+import com.example.springaidemo.controller.MemoryController;
 import com.example.springaidemo.controller.ToolController;
 import com.example.springaidemo.tool.DemoTools;
 import com.example.springaidemo.weather.WeatherService;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
@@ -32,6 +34,8 @@ class SpringAiDemoApplicationTests {
         assertThat(context.getBean(ChatClient.class)).isNotNull();
         assertThat(context.getBean(ChatController.class)).isNotNull();
         assertThat(context.getBean(ToolController.class)).isNotNull();
+        assertThat(context.getBean(MemoryController.class)).isNotNull();
+        assertThat(context.getBean(ChatMemoryRepository.class)).isNotNull();
         assertThat(context.getBean(DemoTools.class)).isNotNull();
         assertThat(context.getBean(WeatherService.class)).isNotNull();
     }

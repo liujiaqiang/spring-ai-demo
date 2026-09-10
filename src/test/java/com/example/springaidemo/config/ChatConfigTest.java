@@ -6,7 +6,10 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 
@@ -22,15 +25,34 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link ChatConfig} 的纯单元测试（不启动 Spring 容器）：
- * 校验消息窗口容量（20 条）以及 ChatClient 的默认系统提示词与记忆 Advisor 装配。
+ * 校验记忆存储 Bean、消息窗口容量（20 条）以及 ChatClient 的默认系统提示词与记忆 Advisor 装配。
  */
 class ChatConfigTest {
 
     private final ChatConfig config = new ChatConfig();
 
+    private final ChatMemoryRepository repository = config.chatMemoryRepository();
+
+    @Test
+    void chatMemoryRepositoryIsInMemoryImpl() {
+        assertThat(repository).isInstanceOf(InMemoryChatMemoryRepository.class);
+        assertThat(config.chatMemoryRepository()).isNotSameAs(repository);
+    }
+
+    @Test
+    void chatMemoryIsBackedByProvidedRepository() {
+        // 同一个 repository 实例：ChatMemory 写入后，repository 应能直接读到（调试接口依赖这一点）
+        ChatMemory memory = config.chatMemory(repository);
+        memory.add("c1", new UserMessage("hello"));
+
+        assertThat(repository.findByConversationId("c1"))
+                .extracting(Message::getText)
+                .containsExactly("hello");
+    }
+
     @Test
     void chatMemoryKeepsAtMost20Messages() {
-        ChatMemory memory = config.chatMemory();
+        ChatMemory memory = config.chatMemory(repository);
 
         assertThat(memory).isInstanceOf(MessageWindowChatMemory.class);
 
@@ -54,7 +76,7 @@ class ChatConfigTest {
         ChatClient.Builder builder = mock(ChatClient.Builder.class, RETURNS_SELF);
         ChatClient built = mock(ChatClient.class);
         when(builder.build()).thenReturn(built);
-        ChatMemory memory = config.chatMemory();
+        ChatMemory memory = config.chatMemory(repository);
 
         ChatClient client = config.chatClient(builder, memory);
 
@@ -70,12 +92,13 @@ class ChatConfigTest {
 
     @Test
     void clearingMemoryRemovesConversation() {
-        ChatMemory memory = config.chatMemory();
-        memory.add("c1", new ArrayList<>(List.of(new UserMessage("hello"))));
-        assertThat(memory.get("c1")).hasSize(1);
+        ChatMemory memory = config.chatMemory(repository);
+        memory.add("c1", new ArrayList<>(List.of(new UserMessage("hello"), new AssistantMessage("hi"))));
+        assertThat(memory.get("c1")).hasSize(2);
 
         memory.clear("c1");
 
         assertThat(memory.get("c1")).isEmpty();
+        assertThat(repository.findConversationIds()).doesNotContain("c1");
     }
 }
